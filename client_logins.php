@@ -1,3 +1,5 @@
+<script src="https://cdn.jsdelivr.net/npm/otpauth/dist/otpauth.umd.min.js"></script>
+
 <?php
 
 if(!empty($_GET['sb'])){
@@ -86,7 +88,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli,"SELECT FOUND_ROWS()"));
             if(empty($login_otp_secret)){
               $otp_display = "-";
             }else{
-              $otp_display = "<span onmouseenter='showOTP($login_id_with_secret)'><i class='far fa-clock'></i> <span id='otp_$login_id'><i>Hover..</i></span></span>";
+              $otp_display = "<span onclick='showOTP($login_id_with_secret)'><span id='otp_countdown_$login_id' style='font-size: 8pt;'></span> <i class='far fa-clock' id='otp_icon_$login_id'></i> <span id='otp_$login_id'><i>Click to Show</i></span><div id='otp_btn_$login_id'></div>";
             }
             $login_note = $row['login_note'];
             $login_contact_id = $row['login_contact_id'];
@@ -140,12 +142,55 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli,"SELECT FOUND_ROWS()"));
   </div>
 
   <script>
+
+function updateToken(id, secret) {
+  totp = new OTPAuth.TOTP({
+                    algorithm: 'SHA1',
+                    digits: 6,
+                    period: 30,
+                    secret: OTPAuth.Secret.fromBase32(secret)});
+
+                    var span = document.getElementById("otp_" + id);
+                    var div = document.getElementById("otp_btn_" + id);
+
+                    div.innerHTML = "<button class='btn btn-sm clipboardjs' data-clipboard-text='" + totp.generate() + "'><i class='far fa-copy text-secondary'></i></button>";
+                    span.textContent = totp.generate(); 
+}
+
+function updateInterval(id, secret){
+      var nowInSecs = Math.floor(new Date().getTime() / 1000);
+      var updatingInSecs = 30 - (nowInSecs % 30);   
+
+      if (updatingInSecs <= 10) {
+        document.getElementById("otp_" + id).style.color = 'red';
+        document.getElementById("otp_icon_" + id).style.color = 'red';
+      } else if (updatingInSecs == 30) {
+        document.getElementById("otp_" + id).style.color = 'black';
+        document.getElementById("otp_icon_" + id).style.color = 'black';
+        updateToken(id, secret);
+      }
+  
+      document.getElementById("otp_countdown_" + id).innerText = updatingInSecs;
+      timer = setTimeout(updateInterval, 1000, id, secret);
+}
+
+
       function showOTP(id, secret){
           //Send a GET request to ajax.php as ajax.php?get_totp_token=true&totp_secret=SECRET
+          
+            //var totp;
+              //var secret = $('#secret').value.replace(/\s/g, '') || 'KRSWW3TPINSXEZDBOMXGG33N';
+              //console.log('secret => ' + secret);
+
+            updateToken(id, secret);
+            updateInterval(id, secret);
+
+          /*
           jQuery.get(
               "ajax.php",
               {get_totp_token: 'true', totp_secret: secret},
               function(data){
+
                   //If we get a response from post.php, parse it as JSON
                   const token = JSON.parse(data);
 
@@ -153,6 +198,7 @@ $num_rows = mysqli_fetch_row(mysqli_query($mysqli,"SELECT FOUND_ROWS()"));
 
               }
           );
+          */
       }
 
       function generatePassword(){
